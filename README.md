@@ -39,7 +39,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
    The only reason that I developed kafka-rpc is that zerorpc failed me!
 
    After months of searching and testing, zerorpc was the best rpc service I'd ever used, but it's bugged!
-   Normally, developers won't notice, because most of the time, we use RPC to post the job from client directly to the server.
+   Normally, developers won't notice, because most of the time, we use RPC to post the job from one client directly to one server.
 
    But when you develop a distributing system, you will have to post K jobs of different types from N clients to M servers.
 
@@ -47,7 +47,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
    And that's where load balancing comes in.
 
-   Zeromq supports that, and zerorpc supports that too. However, sadly, zerorpc doesn't queue up the job, so when you have no server available at all, the jobs will not wait in line but instead, be abandoned.
+   Zeromq supports that, and zerorpc supports that too. In reverse proxy mode, zerorpc will post the jobs, but not sending to servers. Available servers will come looking for job actively. So the job will always be coped by the most available, therefore the most performant servers. However, sadly, zerorpc doesn't really queue up the job, so when you have no server available at all, the jobs will not wait in line but instead, be abandoned.
 
    That's why I need kafka. Unlike most of the MQ, kafka provides data persistence, so no more job abandon. When all servers is unavailable, the job will queue up and wait in line.
 
