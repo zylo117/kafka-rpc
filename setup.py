@@ -14,14 +14,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='krpc',
+    name='kafka-rpc',
     version='1.0.0',
     description='RPC protocol based on kafka',
     long_description=long_description,
-    long_description_content_type='text/x-rst',
+    long_description_content_type='text/markdown',
     author='Carl Cheung',
-    url='https://github.com/zylo117/krpc',
-    packages=['krpc'],
+    url='https://github.com/zylo117/kafka-rpc',
+    packages=['kafka_rpc'],
     install_requires=requirements,
     zip_safe=False,
     license='Apache License 2.0',

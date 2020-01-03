@@ -1,10 +1,10 @@
-# KRPC
+# Kafka RPC
 
 ---
 
 ## Introduction
 
-KRPC, a RPC protocol that based on [kafka](https://kafka.apache.org/), is meant to provide a swift, stable, reliable remote calling service.
+Kafka RPC, a RPC protocol that based on [kafka](https://kafka.apache.org/), is meant to provide a swift, stable, reliable remote calling service.
 
 The reason we love about kafka is its fault tolerance, scalability and wicked large throughput.
 
@@ -25,18 +25,18 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
    When you have to call a function that doesn't belong to local process or computer, but you don't want to build up another complex network framework just to implement restful api or soap, etc.
    RPC is much faster than restful api and easier to use. This is only a very few lines of code to be adjusted to implement a RPC service.
 
-3. Why [krpc](https://github.com/zylo117/krpc/), not the other RPC protocols like [zerorpc](https://github.com/0rpc/zerorpc-python), [grpc](https://github.com/grpc/grpc), [mprpc](https://github.com/studio-ousia/mprpc)?
+3. Why [kafka-rpc](https://github.com/zylo117/kafka-rpc/), not the other RPC protocols like [zerorpc](https://github.com/0rpc/zerorpc-python), [grpc](https://github.com/grpc/grpc), [mprpc](https://github.com/studio-ousia/mprpc)?
 
    Here is the comparison.
 
    | RPC                                               | MiddleWare | Serialization | Speed(QPS) |                                     Features                                     |
    | ------------------------------------------------- | :--------: | :-----------: | :--------: | :------------------------------------------------------------------------------: |
-   | [krpc](https://github.com/zylo117/krpc/)          |   kafka    |    msgpack    |    160+    | dynamic load rebalance, large throughput, data persistence, faster serialization |
+   | [kafka-rpc](https://github.com/zylo117/kafka-rpc/)          |   kafka    |    msgpack    |    160+    | dynamic load rebalance, large throughput, data persistence, faster serialization |
    | [zerorpc](https://github.com/0rpc/zerorpc-python) |   zeromq   |    msgpack    |    450+    |  dynamic load rebalance(failed when all server are busy), faster serialization   |
    | [grpc](https://github.com/grpc/grpc)              |  unknown   |   protobuf    | not tested |       dynamic load rebalance, large throughput, support only function rpc        |
    | [mprpc](https://github.com/studio-ousia/mprpc)    |     no     |    msgpack    |   19000+   |                                    lightspeed                                    |
 
-   The only reason that I developed krpc is that zerorpc failed me!
+   The only reason that I developed kafka-rpc is that zerorpc failed me!
 
    After months of searching and testing, zerorpc was the best rpc service I'd ever used, but it's bugged!
    Normally, developers won't notice, because most of the time, we use RPC to post the job from client directly to the server.
@@ -53,7 +53,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
    If the client crash, jobs will still be on disk (kafka features), unharmed, with replicas(can you imagine that).
 
-   Also, krpc supports dynamic scalability, servers can be always added to the cluster or be removed, so jobs will be fairly distribute to all the servers, and will be reroute to another healthy server if assigned server is down.
+   Also, kafka-rpc supports dynamic scalability, servers can be always added to the cluster or be removed, so jobs will be fairly distribute to all the servers, and will be reroute to another healthy server if assigned server is down.
 
    Despite the minor disadvantages, they are all good tool developed by great programmers, you're always welcome to contribute to their original repositories and my forked [zerorpc](https://github.com/zylo117/zerorpc-python) and [mprpc](https://github.com/zylo117/mprpc), which supports numpy array.
 
@@ -80,9 +80,9 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
 
 ### Then you can use RPC to run Part1 and Part2 on process1, and call the method of process 1 from process2
 
-#### krpc_server_demo.py
+#### kafka_rpc_server_demo.py
 
-    from krpc import KRPCServer
+    from kafka_rpc import KRPCServer
 
     # Part1: define a class
     class Sum:
@@ -96,7 +96,7 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
     krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum')
     krs.server_forever()
 
-#### krpc_client_demo.py
+#### kafka_rpc_client_demo.py
 
     # assuming you kafka broker is on 0.0.0.0:9092
     krc = KRPCClient('0.0.0.0', 9092, topic_name='sum')
@@ -114,7 +114,7 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
 
 Additionally, you can enable redis to speed up caching, by adding use_redis=True to KRPCClient, or specify redis port, db and password, like this:
 
-    krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', use_redis=True, redis_port=6379, redis_db=0, redis_password='krpcno1')
+    krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', use_redis=True, redis_port=6379, redis_db=0, redis_password='kafka_rpc.no.1')
 
 ### Noted
 
