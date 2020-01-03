@@ -63,7 +63,7 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
   
 ## USAGE
 
-### Assuming you already a object and everything works, like this
+### Assuming you already have a object and everything works, like this
 
 #### local_call.py
 
