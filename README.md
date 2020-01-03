@@ -55,6 +55,8 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
    Also, krpc supports dynamic scalability, servers can be always added to the cluster or be removed, so jobs will be fairly distribute to all the servers, and will be reroute to another healthy server if assigned server is down.
 
+   Despite the minor disadvantages, they are all good tool developed by great programmers, you're always welcome to contribute to their original repositories and my forked [zerorpc](https://github.com/zylo117/zerorpc-python) and [mprpc](https://github.com/zylo117/mprpc), which supports numpy array.
+
 #### Next Step
 
 Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or allow asynchronous calls considering its large throughput advantage?
