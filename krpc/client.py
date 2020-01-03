@@ -1,6 +1,11 @@
 # Copyright (c) 2017-2020, Carl Cheung
 # All rights reserved.
 
+"""
+Update Log:
+1.0.0: init
+"""
+
 import datetime
 import logging
 import sys
@@ -14,13 +19,12 @@ logger = logging.getLogger(__name__)
 
 from confluent_kafka import Producer, Consumer, KafkaError
 from aplex import ThreadAsyncPoolExecutor
-import redis
 import msgpack
 import msgpack_numpy
 
 msgpack_numpy.patch()  # add numpy array support for msgpack
 
-from api.aes import AESEncryption
+from krpc.aes import AESEncryption
 
 
 class KRPCClient:
@@ -76,6 +80,7 @@ class KRPCClient:
         self.use_redis = kwargs.get('use_redis', False)
         self.expire_time = kwargs.get('expire_time', 600)
         if self.use_redis:
+            import redis
             redis_port = kwargs.get('redis_port', 6379)
             redis_db = kwargs.get('redis_db', 0)
             redis_password = kwargs.get('redis_password', None)
@@ -170,11 +175,12 @@ class KRPCClient:
                               headers={
                                   'checksum': checksum
                               })
-        if self.ack:
-            self.producer.poll(0.0)
 
         # waiting for response from server sync/async
         res = self.poll_result_from_redis_cache(task_id)
+
+        if self.ack:
+            self.producer.poll(0.0)
 
         # do something to the response
         ret = res['ret']
@@ -339,29 +345,3 @@ class QueueDict:
                     num_pop += 1
                 else:
                     break
-
-
-if __name__ == '__main__':
-    krc = KRPCClient('localhost', 9092, 'sum',
-                     use_redis=True,
-                     )
-    z = krc.add(1, 2)
-    print(z)
-    z = krc.add(1, 2)
-    print(z)
-    z = krc.add(1, 2)
-    print(z)
-
-    z = krc.add(1, 2)
-    print(z)
-    z = krc.add(1, 2)
-    print(z)
-    z = krc.add(1, 2)
-    print(z)
-    z = krc.add(1, 2)
-    print(z)
-
-    for i in range(100):
-        print(krc.add(1, 2))
-
-    krc.close()

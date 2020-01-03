@@ -1,3 +1,6 @@
+# Copyright (c) 2017-2020, Carl Cheung
+# All rights reserved.
+
 import logging
 import time
 from multiprocessing import Process

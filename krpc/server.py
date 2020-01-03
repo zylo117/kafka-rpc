@@ -1,6 +1,11 @@
 # Copyright (c) 2017-2020, Carl Cheung
 # All rights reserved.
 
+"""
+Update Log:
+1.0.0: init
+"""
+
 import datetime
 import logging
 import sys
@@ -17,9 +22,8 @@ import msgpack_numpy
 
 msgpack_numpy.patch()  # add numpy array support for msgpack
 
-from api.aes import AESEncryption
-
-from api.topic_manage import KafkaControl
+from krpc.aes import AESEncryption
+from krpc.topic_manage import KafkaControl
 
 
 class KRPCServer:
