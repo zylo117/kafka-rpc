@@ -1,0 +1,6 @@
+confluent-kafka
+aplex
+msgpack
+msgpack-numpy
+pycryptodome
+redis
