@@ -15,7 +15,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='kafka-rpc',
-    version='1.0.0',
+    version='1.0.1',
     description='RPC protocol based on kafka',
     long_description=long_description,
     long_description_content_type='text/markdown',
