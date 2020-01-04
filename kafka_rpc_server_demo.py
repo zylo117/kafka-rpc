@@ -11,5 +11,5 @@ class Sum:
 s = Sum()
 
 # assuming you kafka broker is on 0.0.0.0:9092
-krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', verify=True, encrypt='hanser')
+krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum')
 krs.server_forever()
