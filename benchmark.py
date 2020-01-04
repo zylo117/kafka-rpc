@@ -11,8 +11,9 @@ from kafka_rpc import KRPCServer
 NUMS = 1000
 
 
-# 162.7235827382268, no concurrent
-# 149.2814916361265, no concurrent, has verification and encryption
+# 162.7235827382268, no concurrent, use_redis
+# 149.2814916361265, no concurrent, use_redis, has verification and encryption
+# 119.78376513574081, no concurrent
 
 
 def start_server():
