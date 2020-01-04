@@ -75,7 +75,7 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
 
     # Part1: define a class
     class Sum:
-        def add(x, y):
+        def add(self, x, y):
             return x + y
 
     # Part2: instantiate a class to an object
@@ -92,7 +92,7 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
 
     # Part1: define a class
     class Sum:
-        def add(x, y):
+        def add(self, x, y):
             return x + y
 
     # Part2: instantiate a class to an object
@@ -104,11 +104,17 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
 
 #### kafka_rpc_client_demo.py
 
+    from kafka_rpc import KRPCClient
+
     # assuming you kafka broker is on 0.0.0.0:9092
     krc = KRPCClient('0.0.0.0', 9092, topic_name='sum')
-
+    
     # call method from client to server
     result = krc.add(1, 2)
+    
+    print(result)
+    
+    krc.close()
 
     # you can find the returned result in result['ret']
     # result = {
