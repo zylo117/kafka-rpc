@@ -24,7 +24,7 @@ import msgpack_numpy
 
 msgpack_numpy.patch()  # add numpy array support for msgpack
 
-from krpc.aes import AESEncryption
+from kafka_rpc.aes import AESEncryption
 
 
 class KRPCClient:

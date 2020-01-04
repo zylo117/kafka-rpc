@@ -5,8 +5,8 @@ import logging
 import time
 from multiprocessing import Process
 
-from client import KRPCClient
-from server import KRPCServer
+from kafka_rpc import KRPCClient
+from kafka_rpc import KRPCServer
 
 NUMS = 1000
 

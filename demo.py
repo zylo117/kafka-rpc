@@ -3,8 +3,8 @@
 
 from multiprocessing import Process
 
-from krpc import KRPCClient
-from krpc import KRPCServer
+from kafka_rpc import KRPCClient
+from kafka_rpc import KRPCServer
 
 
 def start_server():
