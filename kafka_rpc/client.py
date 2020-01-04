@@ -4,6 +4,7 @@
 """
 Update Log:
 1.0.1: init
+1.0.2: change project name from krpc to kafka_rpc
 """
 
 import datetime
