@@ -12,6 +12,12 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
 ---
 
+### Installation
+        
+        pip install kafka-rpc
+
+---
+
 ### FAQ
 
 1. What is [RPC](https://en.wikipedia.org/wiki/Remote_procedure_call)?
@@ -78,7 +84,7 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
     # Part3: call a method of the object
     result = s.add(1, 2)  # result = 3
 
-### Then you can use RPC to run Part1 and Part2 on process1, and call the method of process 1 from process2
+### Then you can use RPC to run Part1 and Part2 on process1, and call Part3, the method of process 1 from process2
 
 #### kafka_rpc_server_demo.py
 
