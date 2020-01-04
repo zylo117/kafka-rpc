@@ -131,3 +131,4 @@ dmypy.json
 .idea/
 test/
 api/get_help.py
+log

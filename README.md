@@ -13,7 +13,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 ---
 
 ### Installation
-        
+
         pip install kafka-rpc
 
 ---
@@ -37,17 +37,17 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
    | RPC                                               | MiddleWare | Serialization | Speed(QPS) |                                     Features                                     |
    | ------------------------------------------------- | :--------: | :-----------: | :--------: | :------------------------------------------------------------------------------: |
-   | [kafka-rpc](https://github.com/zylo117/kafka-rpc/)          |   kafka    |    msgpack    |    160+    | dynamic load rebalance, large throughput, data persistence, faster serialization |
+   | [kafka-rpc](https://github.com/zylo117/kafka-rpc/)          |   kafka    |    msgpack    |    200+ (sync) 4700+(async)     | dynamic load rebalance, large throughput, data persistence, faster serialization |
    | [zerorpc](https://github.com/0rpc/zerorpc-python) |   zeromq   |    msgpack    |    450+    |  dynamic load rebalance(failed when all server are busy), faster serialization   |
    | [grpc](https://github.com/grpc/grpc)              |  unknown   |   protobuf    | not tested |       dynamic load rebalance, large throughput, support only function rpc        |
    | [mprpc](https://github.com/studio-ousia/mprpc)    |     no     |    msgpack    |   19000+   |                                    lightspeed                                    |
 
     Benchmark enviroment:
-        
+
     Ubuntu 19.10 x64 ()
-    
+
     Intel i5-8400
-    
+
     ---
 
    The only reason that I developed kafka-rpc is that zerorpc failed me!
@@ -73,7 +73,8 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
 #### Next Step
 
-Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or allow asynchronous calls considering its large throughput advantage?
+- [X] optimize the QPS by allow asynchronous calls considering its large throughput advantage
+- [ ] rewrite it in cython
   
 ## Usage
 
@@ -134,12 +135,12 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
 
 ## Advanced Usage
 
-1. enable redis to speed up caching, by adding use_redis=True to KRPCClient, or specify redis port, db and password, like this:
+1. enable redis to speed up caching and temporarily store input/output data, by adding use_redis=True to KRPCClient, or specify redis port, db and password. But redis doesn't support async operations, it will crash, it's only faster in sync mode.
 
         krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', use_redis=True, redis_port=6379, redis_db=0, redis_password='kafka_rpc.no.1')
 
-2. enhance the communication security, by adding verify=True or encrypt='whatever_password+you/want' or both to both of the client and the server.But enabling verification and encryption will have great impact on performance.
-    
+2. enhance the communication security, by adding verify=True or encrypt='whatever_password+you/want' or both to both of the client and the server.But enabling verification and encryption will have a little impact on performance.
+
         # basic verification and encryption
         krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', verify=True, encrypt='whatever_password+you/want')
         krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', verify=True, encrypt='whatever_password+you/want')
@@ -147,7 +148,6 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
         # advanced verification and encryption with custom hash function, input: bytes, output: bytes
         krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', verify=True, encrypt='whatever_password+you want', verification=lambda x: sha3_224(x).hexdigest().encode())
         krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', verify=True, encrypt='whatever_password+you/want', verification=lambda x: sha3_224(x).hexdigest().encode())
-        
 
 ### Warning
 
