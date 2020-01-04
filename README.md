@@ -42,6 +42,14 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
    | [grpc](https://github.com/grpc/grpc)              |  unknown   |   protobuf    | not tested |       dynamic load rebalance, large throughput, support only function rpc        |
    | [mprpc](https://github.com/studio-ousia/mprpc)    |     no     |    msgpack    |   19000+   |                                    lightspeed                                    |
 
+    Benchmark enviroment:
+        
+    Ubuntu 19.10 x64 ()
+    
+    Intel i5-8400
+    
+    ---
+
    The only reason that I developed kafka-rpc is that zerorpc failed me!
 
    After months of searching and testing, zerorpc was the best rpc service I'd ever used, but it's bugged!
@@ -67,7 +75,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
 Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or allow asynchronous calls considering its large throughput advantage?
   
-## USAGE
+## Usage
 
 ### Assuming you already have a object and everything works, like this
 
@@ -124,11 +132,24 @@ Yes, yes, I will try hard to optimize the QPS, maybe rewrite it in cython? Or al
     #     'server_id': '192.168.1.x'  # client ip
     # }
 
-Additionally, you can enable redis to speed up caching, by adding use_redis=True to KRPCClient, or specify redis port, db and password, like this:
+## Advanced Usage
 
-    krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', use_redis=True, redis_port=6379, redis_db=0, redis_password='kafka_rpc.no.1')
+1. enable redis to speed up caching, by adding use_redis=True to KRPCClient, or specify redis port, db and password, like this:
 
-### Noted
+        krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', use_redis=True, redis_port=6379, redis_db=0, redis_password='kafka_rpc.no.1')
+
+2. enhance the communication security, by adding verify=True or encrypt='whatever_password+you/want' or both to both of the client and the server.But enabling verification and encryption will have great impact on performance.
+    
+        # basic verification and encryption
+        krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', verify=True, encrypt='whatever_password+you/want')
+        krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', verify=True, encrypt='whatever_password+you/want')
+        
+        # advanced verification and encryption with custom hash function, input: bytes, output: bytes
+        krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', verify=True, encrypt='whatever_password+you want', verification=lambda x: sha3_224(x).hexdigest().encode())
+        krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', verify=True, encrypt='whatever_password+you/want', verification=lambda x: sha3_224(x).hexdigest().encode())
+        
+
+### Warning
 
 If use_redis=False, KRPCClient cannot be instantiated more than once
 

@@ -15,6 +15,8 @@ import zlib
 from hashlib import sha3_224
 import socket
 
+from typing import Callable
+
 logger = logging.getLogger(__name__)
 
 from confluent_kafka import Producer, Consumer, KafkaError
@@ -107,10 +109,12 @@ class KRPCServer:
 
         self.verify = kwargs.get('verify', False)
         self.verification_method = kwargs.get('verification', 'crc32')
-        if self.verification_method == 'sha3_224':
-            self.verification_method = lambda x: sha3_224(x).hexdigest()
-        elif self.verification_method == 'crc32':
-            self.verification_method = lambda x: hex(zlib.crc32(x))
+        if self.verification_method == 'crc32':
+            self.verification_method = lambda x: hex(zlib.crc32(x)).encode()
+        elif isinstance(self.verification_method, Callable):
+            self.verification_method = self.verification_method
+        else:
+            raise AssertionError('not supported verification function.')
 
         self.encrypt = kwargs.get('encrypt', None)
         if self.encrypt is not None:
