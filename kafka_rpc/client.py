@@ -13,8 +13,7 @@ import sys
 import time
 import uuid
 import zlib
-from collections import defaultdict, deque
-from hashlib import sha3_224
+from collections import deque
 
 from typing import Callable
 
@@ -131,7 +130,7 @@ class KRPCClient:
                 time.sleep(1)
 
         # acknowledge, disable ack will double the speed, but not exactly safe.
-        self.ack = kwargs.get('ack', False)
+        self.ack = kwargs.get('ack', True)
 
     @staticmethod
     def delivery_report(err, msg):
@@ -150,10 +149,9 @@ class KRPCClient:
         return res
 
     def call(self, method_name, *args, **kwargs):
-        # rpc call timeout,
+        # rpc call timeout
         # WARNING: if the rpc method has an argument named timeout, it will be not be passed.
-
-        timeout = kwargs.pop('timeout', 0)
+        timeout = kwargs.pop('timeout', 10)
 
         start_time = time.time()
 
@@ -182,7 +180,7 @@ class KRPCClient:
                               })
 
         # waiting for response from server sync/async
-        res = self.poll_result_from_redis_cache(task_id)
+        res = self.poll_result_from_redis_cache(task_id, timeout)
 
         if self.ack:
             self.producer.poll(0.0)
@@ -246,20 +244,22 @@ class KRPCClient:
             except Exception as e:
                 logger.exception(e)
 
-    def poll_result_from_redis_cache(self, task_id):
+    def poll_result_from_redis_cache(self, task_id, timeout=10):
         """
         poll_result_from_cache after receiving a signal from waiting
         Args:
             task_id:
+            timeout:
 
         Returns:
 
         """
+        loop_times = int(timeout / self.max_polling_timeout)
         task_id = task_id.encode()
         if self.use_redis:
             self.cache_channel.subscribe(task_id)
 
-            while True:
+            for _ in range(loop_times):
                 # if no completion, get message from subscribed channel
                 message = self.cache_channel.get_message(timeout=self.max_polling_timeout)
                 # else get response from redis db cache
@@ -278,17 +278,20 @@ class KRPCClient:
                 res = message['data']
                 break
         else:
-            while True:
+            for _ in range(loop_times):
                 try:
                     res = self.cache[task_id]
                     break
                 except:
                     time.sleep(self.max_polling_timeout)
 
-        if self.encrypt:
-            res = self.encrypt.decrypt(res)
+        try:
+            if self.encrypt:
+                res = self.encrypt.decrypt(res)
 
-        res = self.parse_response(res)
+            res = self.parse_response(res)
+        except NameError:
+            raise TimeoutError
 
         return res
 

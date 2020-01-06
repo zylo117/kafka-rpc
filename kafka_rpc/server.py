@@ -123,7 +123,7 @@ class KRPCServer:
         self.is_closed = False
 
         # acknowledge, disable ack will double the speed, but not exactly safe.
-        self.ack = kwargs.get('ack', False)
+        self.ack = kwargs.get('ack', True)
 
     @staticmethod
     def delivery_report(err, msg):
