@@ -29,12 +29,12 @@ def start_server():
         def add(self, x, y):
             return x + y
 
-    krs = KRPCServer('localhost', 9092, Sum(), 'sum', ack=True)
+    krs = KRPCServer('localhost', 9092, Sum(), 'sum')
     krs.server_forever()
 
 
 def call():
-    krc = KRPCClient('localhost', 9092, 'sum', ack=True)
+    krc = KRPCClient('localhost', 9092, 'sum')
 
     t1 = time.time()
     for i in range(NUMS):
