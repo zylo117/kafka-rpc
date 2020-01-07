@@ -4,14 +4,14 @@
 import logging
 import time
 from multiprocessing import Process
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 pool = ThreadPoolExecutor(32)
 
 from kafka_rpc import KRPCClient
 from kafka_rpc import KRPCServer
 
-NUMS = 10000
+NUMS = 1000
 
 
 # 213.8162382121568, no concurrent
@@ -20,7 +20,7 @@ NUMS = 10000
 
 # 2549.6978760136653, threadpool, poolsize 128
 # 3408.9112918300966, threadpool, poolsize 64
-# 4746.943117770887, threadpool, poolsize 32
+# 6788.747358099728, threadpool, poolsize 32
 # 2777.8816114784295, threadpool, poolsize 16
 
 
@@ -29,7 +29,17 @@ def start_server():
         def add(self, x, y):
             return x + y
 
-    krs = KRPCServer('localhost', 9092, Sum(), 'sum')
+    krs = KRPCServer('localhost', 9092, Sum(), 'sum', concurrent=False)
+    krs.server_forever()
+
+
+def start_server_blocking():
+    class Sum:
+        def add(self, x, y):
+            time.sleep(0.1)
+            return x + y
+
+    krs = KRPCServer('localhost', 9092, Sum(), 'sum', concurrent=32)
     krs.server_forever()
 
 
@@ -38,9 +48,10 @@ def call():
 
     t1 = time.time()
     for i in range(NUMS):
-        krc.add(1, 2)
+        result = krc.add(1, 2)
+        print(result)
     t2 = time.time()
-    print(NUMS / (t2 - t1))
+    print('Basic Kafka Client QPS:', NUMS / (t2 - t1))
 
     krc.close()
 
@@ -54,11 +65,10 @@ def call_async():
         futures.append(pool.submit(krc.add, 1, 2))
     for future in as_completed(futures):
         result = future.result()
-        # print(result)
+        print(result)
 
     t2 = time.time()
-    print(NUMS / (t2 - t1))
-    pool.shutdown()
+    print('Async Kafka Client QPS:', NUMS / (t2 - t1))
     krc.close()
 
 
@@ -77,7 +87,17 @@ if __name__ == '__main__':
     p = Process(target=start_server)
     p.start()
 
-    # call()
+    call()
     call_async()
 
     p.terminate()
+
+    p = Process(target=start_server_blocking)
+    p.start()
+
+    call()
+    call_async()
+
+    p.terminate()
+
+    pool.shutdown()

@@ -1,3 +1,10 @@
+# Copyright (c) 2017-2020, Carl Cheung
+# All rights reserved.
+
+"""
+Basic Kafka RPC Server
+"""
+
 from kafka_rpc import KRPCServer
 
 
@@ -11,5 +18,5 @@ class Sum:
 s = Sum()
 
 # assuming you kafka broker is on 0.0.0.0:9092
-krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum')
+krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', concurrent=2)
 krs.server_forever()

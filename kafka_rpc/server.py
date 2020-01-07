@@ -5,6 +5,7 @@
 Update Log:
 1.0.1: init
 1.0.2: change project name from krpc to kafka_rpc
+1.0.3: add server side concurrency
 """
 
 import datetime
@@ -12,6 +13,7 @@ import logging
 import sys
 import time
 import zlib
+from concurrent.futures.thread import ThreadPoolExecutor
 from hashlib import sha3_224
 import socket
 
@@ -32,7 +34,8 @@ from kafka_rpc.topic_manage import KafkaControl
 class KRPCServer:
     def __init__(self, host: str, port: int, handle, topic_name: str, server_name: str = None,
                  num_partitions: int = 64, replication_factor: int = 1,
-                 max_polling_timeout: float = 0.001, **kwargs):
+                 max_polling_timeout: float = 0.001,
+                 concurrent=False, **kwargs):
         """
         Init Kafka RPCServer.
 
@@ -53,6 +56,14 @@ class KRPCServer:
 
             encrypt: default None, if not None, will encrypt the message with the given password. It will slow down performance.
             verify: default False, if True, will verify the message with the given sha3 checksum from the headers.
+
+            ack: default False, if True, server will confirm the message status. Disable ack will double the speed, but not exactly safe.
+
+            concurrent: default False, if False, the handle work in a local threads.
+                        If concurrent is a integer K, KRPCServer will generate a pool of K threads,
+                        so handle works in multiple threads.
+                        Be aware that when benefiting from concurrency, KRPCClient should run in async mode as well.
+                        If concurrency fails, the handle itself might not support multithreading.
         """
         bootstrap_servers = '{}:{}'.format(host, port)
         kc = KafkaControl(bootstrap_servers)
@@ -123,7 +134,14 @@ class KRPCServer:
         self.is_closed = False
 
         # acknowledge, disable ack will double the speed, but not exactly safe.
-        self.ack = kwargs.get('ack', True)
+        self.ack = kwargs.get('ack', False)
+
+        # concurrency
+        if isinstance(concurrent, int) and concurrent is not False:
+            assert concurrent > 1, 'if enable concurrency, concurrent must be a integer greater than 1'
+            self.thread_pool = ThreadPoolExecutor(concurrent)
+        else:
+            self.thread_pool = None
 
     @staticmethod
     def delivery_report(err, msg):
@@ -169,69 +187,75 @@ class KRPCServer:
                     logger.info('handshake succeeded.')
                     continue
 
-                value = msg.value()
-                headers = msg.headers()
-                timestamp = msg.timestamp()
-
-                # get info from header, etc
-                request_time = timestamp[1] / 1000
-                checksum = headers[0][1]
-
-                if self.verify:
-                    signature = self.verification_method(value)
-                    if checksum != signature:
-                        logger.error('checksum mismatch of task {}'.format(task_id))
-                        continue
-
-                if self.encrypt:
-                    value = self.encrypt.decrypt(value)
-
-                req = self.parse_request(value)
-                if req is None:
-                    continue
-
-                method_name = req['method_name']
-                args = req['args']
-                kwargs = req['kwargs']
-                func = getattr(self.handle, method_name)
-
-                # perform call
-                self.is_available = False
-                ret = func(*args, **kwargs)
-                self.is_available = True
-
-                tact_time = time.time() - request_time
-
-                res = {
-                    'ret': ret,
-                    'tact_time': tact_time,
-                    'server_id': self.server_name,
-                    'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-                }
-
-                # send return back to client
-                res = self.packer.pack(res)
-
-                if self.encrypt:
-                    res = self.encrypt.encrypt(res)
-
-                if self.verify:
-                    checksum = self.verification_method(res)
+                if self.thread_pool is None:
+                    self._local_call(msg, task_id)
                 else:
-                    checksum = None
-
-                self.producer.produce(self.client_topic, res, task_id,
-                                      headers={
-                                          'checksum': checksum
-                                      })
-                if self.ack:
-                    self.producer.poll(0.0)
+                    self.thread_pool.submit(self._local_call, msg, task_id,)
 
             except (KeyboardInterrupt, SystemExit):
                 self.is_closed = True
 
             except Exception as e:
                 logger.exception(e)
+
+    def _local_call(self, msg, task_id):
+        value = msg.value()
+        headers = msg.headers()
+        timestamp = msg.timestamp()
+
+        # get info from header, etc
+        request_time = timestamp[1] / 1000
+        checksum = headers[0][1]
+
+        if self.verify:
+            signature = self.verification_method(value)
+            if checksum != signature:
+                logger.error('checksum mismatch of task {}'.format(task_id))
+                return
+
+        if self.encrypt:
+            value = self.encrypt.decrypt(value)
+        req = self.parse_request(value)
+
+        if req is None:
+            return
+
+        method_name = req['method_name']
+        args = req['args']
+        kwargs = req['kwargs']
+        func = getattr(self.handle, method_name)
+
+        # perform call
+        self.is_available = False
+        ret = func(*args, **kwargs)
+        self.is_available = True
+
+        tact_time = time.time() - request_time
+
+        res = {
+            'ret': ret,
+            'tact_time': tact_time,
+            'server_id': self.server_name,
+            'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+        }
+
+        # send return back to client
+        res = self.packer.pack(res)
+
+        if self.encrypt:
+            res = self.encrypt.encrypt(res)
+
+        if self.verify:
+            checksum = self.verification_method(res)
+        else:
+            checksum = None
+
+        self.producer.produce(self.client_topic, res, task_id,
+                              headers={
+                                  'checksum': checksum
+                              })
+        if self.ack:
+            self.producer.poll(0.0)
 
     def close(self):
         self.consumer.close()

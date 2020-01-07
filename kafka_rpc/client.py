@@ -54,6 +54,8 @@ class KRPCClient:
 
             use_redis: default False, if True, use redis as cache, built-in QueueDict instead.
 
+            ack: default False, if True, server will confirm the message status. Disable ack will double the speed, but not exactly safe.
+
         """
 
         bootstrap_servers = '{}:{}'.format(host, port)
@@ -130,7 +132,7 @@ class KRPCClient:
                 time.sleep(1)
 
         # acknowledge, disable ack will double the speed, but not exactly safe.
-        self.ack = kwargs.get('ack', True)
+        self.ack = kwargs.get('ack', False)
 
     @staticmethod
     def delivery_report(err, msg):
@@ -180,7 +182,7 @@ class KRPCClient:
                               })
 
         # waiting for response from server sync/async
-        res = self.poll_result_from_redis_cache(task_id, timeout)
+        res = self.poll_result_from_cache(task_id, timeout)
 
         if self.ack:
             self.producer.poll(0.0)
@@ -244,7 +246,7 @@ class KRPCClient:
             except Exception as e:
                 logger.exception(e)
 
-    def poll_result_from_redis_cache(self, task_id, timeout=10):
+    def poll_result_from_cache(self, task_id, timeout=10):
         """
         poll_result_from_cache after receiving a signal from waiting
         Args:
