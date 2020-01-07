@@ -135,11 +135,59 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
 ## Advanced Usage
 
-1. enable redis to speed up caching and temporarily store input/output data, by adding use_redis=True to KRPCClient, or specify redis port, db and password. But redis doesn't support async operations, it will crash, it's only faster in sync mode.
+1. enable server side concurrency. Respectively, multiple requests must be sent concurrently.
+    
+#### kafka_rpc_server_concurrency_demo.py
+        
+        import time
+        from kafka_rpc import KRPCServer
+        
+        
+        # Part1: define a class
+        class Sum:
+            def add(self, x, y):
+        
+                # simulate blocking actions like I/O
+                time.sleep(0.1)
+        
+                return x + y
+        
+        
+        # Part2: instantiate a class to an object
+        s = Sum()
+        
+        # assuming you kafka broker is on 0.0.0.0:9092
+        krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', concurrent=128)
+        krs.server_forever()
+
+#### kafka_rpc_client_async_demo.py
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from kafka_rpc import KRPCClient
+        
+        pool = ThreadPoolExecutor(128)
+        
+        # assuming you kafka broker is on 0.0.0.0:9092
+        krc = KRPCClient('0.0.0.0', 9092, topic_name='sum')
+        
+        # call method concurrently from client to server
+        # use pool.map if you like
+        futures = []
+        for i in range(128):
+            futures.append(pool.submit(krc.add, 1, 2, timeout=20))
+        
+        for future in as_completed(futures):
+            result = future.result()
+            print(result)
+        
+        krc.close()
+
+
+2. enable redis to speed up caching and temporarily store input/output data, by adding use_redis=True to KRPCClient, or specify redis port, db and password. But redis doesn't support async operations, it will crash, it's only faster in sync mode.
 
         krc = KRPCClient('0.0.0.0', 9092, topic_name='sum', use_redis=True, redis_port=6379, redis_db=0, redis_password='kafka_rpc.no.1')
 
-2. enhance the communication security, by adding verify=True or encrypt='whatever_password+you/want' or both to both of the client and the server.But enabling verification and encryption will have a little impact on performance.
+3. enhance the communication security, by adding verify=True or encrypt='whatever_password+you/want' or both to both of the client and the server.But enabling verification and encryption will have a little impact on performance.
 
         # basic verification and encryption
         krs = KRPCServer('0.0.0.0', 9092, s, topic_name='sum', verify=True, encrypt='whatever_password+you/want')
