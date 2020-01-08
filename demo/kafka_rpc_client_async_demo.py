@@ -13,7 +13,7 @@ from kafka_rpc import KRPCClient
 pool = ThreadPoolExecutor(128)
 
 # assuming you kafka broker is on 0.0.0.0:9092
-krc = KRPCClient('0.0.0.0', 9092, topic_name='sum')
+krc = KRPCClient('0.0.0.0:9092', topic_name='sum')
 
 # call method concurrently from client to server
 # use pool.map if you like

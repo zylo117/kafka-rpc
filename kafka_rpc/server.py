@@ -32,7 +32,7 @@ from kafka_rpc.topic_manage import KafkaControl
 
 
 class KRPCServer:
-    def __init__(self, host: str, port: int, handle, topic_name: str, server_name: str = None,
+    def __init__(self, *addresses, handle, topic_name: str, server_name: str = None,
                  num_partitions: int = 64, replication_factor: int = 1,
                  max_polling_timeout: float = 0.001,
                  concurrent=False, **kwargs):
@@ -43,8 +43,7 @@ class KRPCServer:
         If any server is down, the other KRPCServer will automatically take it place.
 
         Args:
-            host: kafka broker host
-            port: kafka broker port
+            addresses: kafka broker host, port, for examples: '192.168.1.117:9092'
             handle: any object
             topic_name: kafka topic_name, if topic exists,
                         the existing topic will be used,
@@ -65,7 +64,7 @@ class KRPCServer:
                         Be aware that when benefiting from concurrency, KRPCClient should run in async mode as well.
                         If concurrency fails, the handle itself might not support multithreading.
         """
-        bootstrap_servers = '{}:{}'.format(host, port)
+        bootstrap_servers = ','.join(addresses)
         kc = KafkaControl(bootstrap_servers)
 
         self.topic_name = topic_name

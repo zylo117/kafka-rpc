@@ -30,7 +30,7 @@ from kafka_rpc.aes import AESEncryption
 
 
 class KRPCClient:
-    def __init__(self, host: str, port: int, topic_name: str,
+    def __init__(self, *addresses, topic_name: str,
                  max_polling_timeout: float = 0.001, **kwargs):
         """
         Init Kafka RPCClient.
@@ -42,8 +42,7 @@ class KRPCClient:
         redis must be used, pass argument use_redis=True.
 
         Args:
-            host: kafka broker host
-            port: kafka broker port
+            addresses: kafka broker host, port, for examples: '192.168.1.117:9092'
             topic_name: kafka topic_name, if topic exists,
                         the existing topic will be used,
                         create a new topic otherwise.
@@ -58,7 +57,7 @@ class KRPCClient:
 
         """
 
-        bootstrap_servers = '{}:{}'.format(host, port)
+        bootstrap_servers = ','.join(addresses)
 
         self.topic_name = topic_name
 
@@ -311,7 +310,7 @@ class KRPCClient:
 
 
 class QueueDict:
-    def __init__(self, maxlen=0, expire=30):
+    def __init__(self, maxlen=0, expire=128):
         assert isinstance(maxlen, int) and maxlen >= 0
         assert isinstance(expire, int) and expire >= 0
 
@@ -338,10 +337,13 @@ class QueueDict:
 
     def remove_oldest(self):
         if self.maxlen is not None:
-            if len(self.queue_key) > self.maxlen:
-                self.queue_key.popleft()
-                self.queue_val.popleft()
-                self.queue_duration.popleft()
+            while True:
+                if len(self.queue_key) > self.maxlen:
+                    self.queue_key.popleft()
+                    self.queue_val.popleft()
+                    self.queue_duration.popleft()
+                else:
+                    break
 
         if self.expire is not None:
             num_pop = 0

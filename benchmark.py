@@ -29,7 +29,7 @@ def start_server():
         def add(self, x, y):
             return x + y
 
-    krs = KRPCServer('localhost', 9092, Sum(), 'sum', concurrent=False)
+    krs = KRPCServer('localhost:9092', handle=Sum(), topic_name='sum', concurrent=False)
     krs.server_forever()
 
 
@@ -39,12 +39,12 @@ def start_server_blocking():
             time.sleep(0.1)
             return x + y
 
-    krs = KRPCServer('localhost', 9092, Sum(), 'sum', concurrent=32)
+    krs = KRPCServer('localhost:9092', handle=Sum(), topic_name='sum', concurrent=32)
     krs.server_forever()
 
 
 def call():
-    krc = KRPCClient('localhost', 9092, 'sum')
+    krc = KRPCClient('localhost:9092', topic_name='sum')
 
     t1 = time.time()
     for i in range(NUMS):
@@ -57,7 +57,7 @@ def call():
 
 
 def call_async():
-    krc = KRPCClient('localhost', 9092, 'sum')
+    krc = KRPCClient('localhost:9092', topic_name='sum')
 
     t1 = time.time()
     futures = []
