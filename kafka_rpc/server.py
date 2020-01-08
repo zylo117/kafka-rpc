@@ -6,6 +6,7 @@ Update Log:
 1.0.1: init
 1.0.2: change project name from krpc to kafka_rpc
 1.0.3: add server side concurrency
+1.0.4: allow increasing message_max_bytes
 """
 
 import datetime
