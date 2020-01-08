@@ -76,9 +76,22 @@ class KRPCClient:
             'auto.commit.interval.ms': 1000
         })
 
-        message_max_bytes = kwargs.get('message_max_bytes', 1048576),
-        queue_buffering_max_kbytes = kwargs.get('queue_buffering_max_kbytes', 1048576),
-        queue_buffering_max_messages = kwargs.get('queue_buffering_max_messages', 100000),
+        # message_max_bytes = kwargs.get('message_max_bytes', 1048576),
+        # queue_buffering_max_kbytes = kwargs.get('queue_buffering_max_kbytes', 1048576),
+        # queue_buffering_max_messages = kwargs.get('queue_buffering_max_messages', 100000),
+        try:
+            message_max_bytes = kwargs['message_max_bytes']
+        except KeyError:
+            message_max_bytes = 1048576
+        try:
+            queue_buffering_max_kbytes = kwargs['queue_buffering_max_kbytes']
+        except KeyError:
+            queue_buffering_max_kbytes = 1048576
+        try:
+            queue_buffering_max_messages = kwargs['queue_buffering_max_messages']
+        except KeyError:
+            queue_buffering_max_messages = 100000
+
         if message_max_bytes > 1048576:
             logger.warning('message_max_bytes is greater than 1048576, '
                            'message.max.bytes and replica.fetch.max.bytes of '
