@@ -52,7 +52,7 @@ class KRPCClient:
             encrypt: default None, if not None, will encrypt the message with the given password. It will slow down performance.
             verify: default False, if True, will verify the message with the given sha3 checksum from the headers.
 
-            use_redis: default False, if True, use redis as cache, built-in QueueDict instead.
+            use_redis: default False, if True, use redis as cache, built-in QueueDict otherwise.
 
             ack: default False, if True, server will confirm the message status. Disable ack will double the speed, but not exactly safe.
 
