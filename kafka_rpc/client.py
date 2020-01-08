@@ -74,9 +74,23 @@ class KRPCClient:
             'auto.offset.reset': 'earliest',
             'auto.commit.interval.ms': 1000
         })
+
+        message_max_bytes = kwargs.get('message_max_bytes', 1048576),
+        queue_buffering_max_kbytes = kwargs.get('queue_buffering_max_kbytes', 1048576),
+        queue_buffering_max_messages = kwargs.get('queue_buffering_max_messages', 100000),
+        if message_max_bytes > 1048576:
+            logger.warning('message_max_bytes is greater than 1048576, '
+                           'message.max.bytes and replica.fetch.max.bytes of '
+                           'brokers\' config should be greater than this')
+
         self.producer = Producer({
             'bootstrap.servers': bootstrap_servers,
             'on_delivery': self.delivery_report,
+
+            # custom parameters
+            'message.max.bytes': message_max_bytes,
+            'queue.buffering.max.kbytes': queue_buffering_max_kbytes,
+            'queue.buffering.max.messages': queue_buffering_max_messages
         })
 
         # add redis cache, for temporarily storage of returned data
