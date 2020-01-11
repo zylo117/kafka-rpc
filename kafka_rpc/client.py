@@ -112,10 +112,11 @@ class KRPCClient:
         self.expire_time = kwargs.get('expire_time', 600)
         if self.use_redis:
             import redis
+            redis_host = kwargs.get('redis_host', 'localhost')
             redis_port = kwargs.get('redis_port', 6379)
             redis_db = kwargs.get('redis_db', 0)
             redis_password = kwargs.get('redis_password', None)
-            self.cache = redis.Redis(host, redis_port, redis_db, redis_password)
+            self.cache = redis.Redis(redis_host, redis_port, redis_db, redis_password)
             self.cache_channel = self.cache.pubsub()
         else:
             self.cache = QueueDict(maxlen=2048, expire=self.expire_time)
@@ -306,6 +307,8 @@ class KRPCClient:
 
                 res = message['data']
                 break
+            else:
+                raise TimeoutError
         else:
             for _ in range(loop_times):
                 try:
@@ -313,14 +316,13 @@ class KRPCClient:
                     break
                 except:
                     time.sleep(self.max_polling_timeout)
+            else:
+                raise TimeoutError
 
-        try:
-            if self.encrypt:
-                res = self.encrypt.decrypt(res)
+        if self.encrypt:
+            res = self.encrypt.decrypt(res)
 
-            res = self.parse_response(res)
-        except NameError:
-            raise TimeoutError
+        res = self.parse_response(res)
 
         return res
 

@@ -18,5 +18,5 @@ class Sum:
 s = Sum()
 
 # assuming you kafka broker is on 0.0.0.0:9092
-krs = KRPCServer('0.0.0.0:9092', handle=s, topic_name='sum', concurrent=2)
+krs = KRPCServer('localhost:9092', handle=s, topic_name='sum', replication_factor=2, concurrent=2)
 krs.server_forever()

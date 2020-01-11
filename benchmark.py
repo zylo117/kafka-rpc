@@ -11,7 +11,7 @@ pool = ThreadPoolExecutor(32)
 from kafka_rpc import KRPCClient
 from kafka_rpc import KRPCServer
 
-NUMS = 1000
+NUMS = 5000
 
 
 # 213.8162382121568, no concurrent
@@ -29,7 +29,7 @@ def start_server():
         def add(self, x, y):
             return x + y
 
-    krs = KRPCServer('localhost:9092', handle=Sum(), topic_name='sum', concurrent=False)
+    krs = KRPCServer('localhost:9092', handle=Sum(), topic_name='sum', replication_factor=1, concurrent=False)
     krs.server_forever()
 
 
@@ -87,17 +87,17 @@ if __name__ == '__main__':
     p = Process(target=start_server)
     p.start()
 
-    call()
+    # call()
     call_async()
 
     p.terminate()
 
-    p = Process(target=start_server_blocking)
-    p.start()
-
-    call()
-    call_async()
-
-    p.terminate()
-
-    pool.shutdown()
+    # p = Process(target=start_server_blocking)
+    # p.start()
+    #
+    # call()
+    # call_async()
+    #
+    # p.terminate()
+    #
+    # pool.shutdown()
