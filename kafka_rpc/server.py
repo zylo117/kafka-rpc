@@ -14,10 +14,12 @@ import datetime
 import logging
 import sys
 import time
+import traceback
 import zlib
 from concurrent.futures.thread import ThreadPoolExecutor
 from hashlib import sha3_224
 import socket
+import pickle
 
 from typing import Callable
 
@@ -259,7 +261,15 @@ class KRPCServer:
 
         # perform call
         self.is_available = False
-        ret = func(*args, **kwargs)
+        try:
+            ret = func(*args, **kwargs)
+            exception = None
+            tb = None
+        except Exception as e:
+            ret = None
+            exception = pickle.dumps(e, protocol=4)
+            tb = traceback.format_exc()
+
         self.is_available = True
 
         tact_time = time.time() - request_time
@@ -268,7 +278,9 @@ class KRPCServer:
             'ret': ret,
             'tact_time': tact_time,
             'server_id': self.server_name,
-            'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+            'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'),
+            'exception': exception,
+            'traceback': tb
         }
 
         # send return back to client

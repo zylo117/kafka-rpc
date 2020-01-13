@@ -12,6 +12,7 @@ Update Log:
 
 import datetime
 import logging
+import pickle
 import sys
 import time
 import uuid
@@ -234,6 +235,14 @@ class KRPCClient:
         ret = res['ret']
         tact_time_server = res['tact_time']
         server_id = res['server_id']
+        exception = res['exception']
+        tb = res['traceback']
+
+        if exception is not None:
+            exception = pickle.loads(exception)
+            logger.exception(exception)
+            if tb is not None:
+                logger.error(tb)
 
         end_time = time.time()
 
