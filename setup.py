@@ -1,3 +1,5 @@
+from glob import glob
+
 from setuptools import setup
 
 requirements = [
@@ -9,13 +11,12 @@ requirements = [
     'redis>=3.3.8',
 ]
 
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
     name='kafka-rpc',
-    version='1.0.4',
+    version='1.0.6',
     description='RPC protocol based on kafka',
     long_description=long_description,
     long_description_content_type='text/markdown',

@@ -7,6 +7,7 @@ Update Log:
 1.0.2: change project name from krpc to kafka_rpc
 1.0.3: add server side concurrency
 1.0.4: allow increasing message_max_bytes
+1.0.6: stop using a global packer or unpacker, to ensure thread safety.
 """
 
 import datetime
@@ -33,7 +34,7 @@ from kafka_rpc.topic_manage import KafkaControl
 
 
 class KRPCServer:
-    def __init__(self, *addresses, handle, topic_name: str, server_name: str = None,
+    def   __init__(self, *addresses, handle, topic_name: str, server_name: str = None,
                  num_partitions: int = 64, replication_factor: int = 1,
                  max_polling_timeout: float = 0.001,
                  concurrent=False, **kwargs):
@@ -138,8 +139,8 @@ class KRPCServer:
         # self.callback_before_call = kwargs.get('callback_before_rpc', None)
         # self.callback_after_call = kwargs.get('callback_after_rpc', None)
 
-        # set msgpack packer & unpacker
-        self.packer = msgpack.Packer(use_bin_type=True)
+        # set msgpack packer & unpacker, stop using a global packer or unpacker, to ensure thread safety.
+        # self.packer = msgpack.Packer(use_bin_type=True)
         self.unpacker = msgpack.Unpacker(use_list=False, raw=False)
 
         # set status indicator
@@ -177,12 +178,14 @@ class KRPCServer:
         else:
             logger.info('response returned to {} [{}]'.format(msg.topic(), msg.partition()))
 
-    def parse_request(self, msg_value):
+    @staticmethod
+    def parse_request(msg_value):
         try:
-            self.unpacker.feed(msg_value)
-            req = next(self.unpacker)
+            req = msgpack.unpackb(msg_value, use_list=False, raw=False)
         except Exception as e:
             logger.exception(e)
+            # TODO: Exception should be responded immediately.
+
             req = None
         return req
 
@@ -200,7 +203,7 @@ class KRPCServer:
                 if msg is None:
                     continue
                 if msg.error():
-                    logger.error("Request error: {}".format(msg.error()))
+                    logger.error('Request error: {}'.format(msg.error()))
                     continue
 
                 task_id = msg.key()  # an uuid, the only id that pairs the request and the response
@@ -229,6 +232,8 @@ class KRPCServer:
         value = msg.value()
         headers = msg.headers()
         timestamp = msg.timestamp()
+        topic = msg.topic()
+        logger.info('request received, topic: {} task id: {}'.format(topic, task_id))
 
         # get info from header, etc
         request_time = timestamp[1] / 1000
@@ -267,7 +272,7 @@ class KRPCServer:
         }
 
         # send return back to client
-        res = self.packer.pack(res)
+        res = msgpack.packb(res, use_bin_type=True)
 
         if self.encrypt:
             res = self.encrypt.encrypt(res)
@@ -300,13 +305,3 @@ def get_ip():
     finally:
         s.close()
     return ip
-
-
-if __name__ == '__main__':
-    class Sum:
-        def add(self, x, y):
-            return x + y
-
-
-    krs = KRPCServer('localhost', 9092, Sum(), 'sum')
-    krs.server_forever()

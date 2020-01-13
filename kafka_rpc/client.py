@@ -6,6 +6,8 @@ Update Log:
 1.0.1: init
 1.0.2: change project name from krpc to kafka_rpc
 1.0.4: allow increasing message_max_bytes
+1.0.5: support subscribing to multiple topics
+1.0.6: stop using a global packer or unpacker, to ensure thread safety.
 """
 
 import datetime
@@ -15,8 +17,7 @@ import time
 import uuid
 import zlib
 from collections import deque
-
-from typing import Callable
+from typing import Callable, Union
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ from kafka_rpc.aes import AESEncryption
 
 
 class KRPCClient:
-    def __init__(self, *addresses, topic_name: str,
+    def __init__(self, *addresses, topic_name: Union[str, list],
                  max_polling_timeout: float = 0.001, **kwargs):
         """
         Init Kafka RPCClient.
@@ -44,7 +45,7 @@ class KRPCClient:
 
         Args:
             addresses: kafka broker host, port, for examples: '192.168.1.117:9092'
-            topic_name: kafka topic_name, if topic exists,
+            topic_name: kafka topic_name(s), if topic exists,
                         the existing topic will be used,
                         create a new topic otherwise.
             max_polling_timeout: maximum time(seconds) to block waiting for message, event or callback.
@@ -60,10 +61,10 @@ class KRPCClient:
 
         bootstrap_servers = ','.join(addresses)
 
-        self.topic_name = topic_name
-
-        self.server_topic = 'krpc_{}_server'.format(topic_name)
-        self.client_topic = 'krpc_{}_client'.format(topic_name)
+        assert isinstance(topic_name, str) or isinstance(topic_name, list)
+        self.topic_names = [topic_name] if isinstance(topic_name, str) else topic_name
+        # self.server_topics = ['krpc_{}_server'.format(topic_name) for topic_name in self.topic_names]
+        self.client_topics = ['krpc_{}_client'.format(topic_name) for topic_name in self.topic_names]
 
         # set max_polling_timeout
         assert max_polling_timeout > 0, 'max_polling_timeout must be greater than 0'
@@ -121,11 +122,11 @@ class KRPCClient:
         else:
             self.cache = QueueDict(maxlen=2048, expire=self.expire_time)
 
-        self.consumer.subscribe([self.client_topic])
+        self.consumer.subscribe(self.client_topics)
 
-        # set msgpack packer & unpacker
-        self.packer = msgpack.Packer(use_bin_type=True)
-        self.unpacker = msgpack.Unpacker(use_list=False, raw=False)
+        # set msgpack packer & unpacker, stop using a global packer or unpacker, to ensure thread safety.
+        # self.packer = msgpack.Packer(use_bin_type=True)
+        # self.unpacker = msgpack.Unpacker(use_list=False, raw=False)
 
         self.verify = kwargs.get('verify', False)
         self.verification_method = kwargs.get('verification', 'crc32')
@@ -147,20 +148,29 @@ class KRPCClient:
 
         # handshake, if's ok not to handshake, but the first rpc would be slow.
         if kwargs.get('handshake', True):
-            self.handshaked = False
-            self.producer.produce(self.server_topic, b'handshake', b'handshake',
+            self.handshaked = {}
+            self.subscribe(*self.topic_names)
+
+        # acknowledge, disable ack will double the speed, but not exactly safe.
+        self.ack = kwargs.get('ack', False)
+
+    def subscribe(self, *topic_names):
+        for topic_name in topic_names:
+            server_topic = 'krpc_{}_server'.format(topic_name)
+            self.handshaked[topic_name] = False
+            self.producer.produce(server_topic, b'handshake', b'handshake',
                                   headers={
                                       'checksum': None
                                   })
             self.producer.poll(0.0)
-            logger.info('sending handshake')
-            while True:
-                if self.handshaked:
+            logger.info('sending handshake to {}'.format(server_topic))
+            for i in range(15):
+                if self.handshaked[topic_name]:
+                    logger.info('handshake of {} succeeded.'.format(topic_name))
                     break
-                time.sleep(1)
-
-        # acknowledge, disable ack will double the speed, but not exactly safe.
-        self.ack = kwargs.get('ack', False)
+                time.sleep(2)
+            else:
+                logger.error('failed to handshake with {}'.format(server_topic))
 
     @staticmethod
     def delivery_report(err, msg):
@@ -169,12 +179,13 @@ class KRPCClient:
         else:
             logger.info('request sent to {} [{}]'.format(msg.topic(), msg.partition()))
 
-    def parse_response(self, msg_value):
+    @staticmethod
+    def parse_response(msg_value):
         try:
-            self.unpacker.feed(msg_value)
-            res = next(self.unpacker)
+            res = msgpack.unpackb(msg_value, use_list=False, raw=False)
         except Exception as e:
             logger.exception(e)
+
             res = None
         return res
 
@@ -182,6 +193,10 @@ class KRPCClient:
         # rpc call timeout
         # WARNING: if the rpc method has an argument named timeout, it will be not be passed.
         timeout = kwargs.pop('timeout', 10)
+
+        # get topic_name
+        topic_name = kwargs.pop('topic_name', self.topic_names[0])
+        server_topic = 'krpc_{}_server'.format(topic_name)
 
         start_time = time.time()
 
@@ -192,7 +207,7 @@ class KRPCClient:
             'kwargs': kwargs
         }
 
-        req = self.packer.pack(req)
+        req = msgpack.packb(req, use_bin_type=True)
 
         if self.encrypt:
             req = self.encrypt.encrypt(req)
@@ -204,7 +219,7 @@ class KRPCClient:
 
         task_id = uuid.uuid4().hex
 
-        self.producer.produce(self.server_topic, req, task_id,
+        self.producer.produce(server_topic, req, task_id,
                               headers={
                                   'checksum': checksum
                               })
@@ -245,10 +260,15 @@ class KRPCClient:
                     continue
 
                 task_id = msg.key()  # an uuid, the only id that pairs the request and the response
+                topic_name = msg.topic()
 
                 if task_id == b'handshake':
-                    logger.info('handshake succeeded.')
-                    self.handshaked = True
+                    try:
+                        real_topic_name = '_'.join(topic_name.split('_')[1:-1])
+                    except:
+                        logger.error('invalid topic name {}'.format(topic_name))
+                        continue
+                    self.handshaked[real_topic_name] = True
                     continue
 
                 res = msg.value()
