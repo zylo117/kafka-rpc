@@ -137,7 +137,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
 1. enable server side concurrency. Respectively, multiple requests must be sent concurrently.
     
-#### kafka_rpc_server_concurrency_demo.py
+    #### kafka_rpc_server_concurrency_demo.py
         
         import time
         from kafka_rpc import KRPCServer
@@ -160,7 +160,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
         krs = KRPCServer('0.0.0.0:9092', handle=s, topic_name='sum', concurrent=128)
         krs.server_forever()
 
-#### kafka_rpc_client_async_demo.py
+    #### kafka_rpc_client_async_demo.py
 
         from concurrent.futures import ThreadPoolExecutor, as_completed
         from kafka_rpc import KRPCClient
