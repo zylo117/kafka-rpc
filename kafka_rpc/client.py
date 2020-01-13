@@ -123,8 +123,6 @@ class KRPCClient:
         else:
             self.cache = QueueDict(maxlen=2048, expire=self.expire_time)
 
-        self.consumer.subscribe(self.client_topics)
-
         # set msgpack packer & unpacker, stop using a global packer or unpacker, to ensure thread safety.
         # self.packer = msgpack.Packer(use_bin_type=True)
         # self.unpacker = msgpack.Unpacker(use_list=False, raw=False)
@@ -150,28 +148,41 @@ class KRPCClient:
         # handshake, if's ok not to handshake, but the first rpc would be slow.
         if kwargs.get('handshake', True):
             self.handshaked = {}
-            self.subscribe(*self.topic_names)
+        self.subscribe(*self.topic_names)
 
         # acknowledge, disable ack will double the speed, but not exactly safe.
         self.ack = kwargs.get('ack', False)
 
     def subscribe(self, *topic_names):
+        if not topic_names:
+            return
+
         for topic_name in topic_names:
-            server_topic = 'krpc_{}_server'.format(topic_name)
-            self.handshaked[topic_name] = False
-            self.producer.produce(server_topic, b'handshake', b'handshake',
-                                  headers={
-                                      'checksum': None
-                                  })
-            self.producer.poll(0.0)
-            logger.info('sending handshake to {}'.format(server_topic))
-            for i in range(15):
-                if self.handshaked[topic_name]:
-                    logger.info('handshake of {} succeeded.'.format(topic_name))
-                    break
-                time.sleep(2)
-            else:
-                logger.error('failed to handshake with {}'.format(server_topic))
+            client_topic = 'krpc_{}_client'.format(topic_name)
+
+            self.topic_names.append(topic_name)
+            self.client_topics.append(client_topic)
+
+        self.consumer.subscribe(self.client_topics)
+        logger.info('adding consumer subscription of: {}'.format(topic_names))
+
+        if hasattr(self, 'handshaked'):
+            for topic_name in topic_names:
+                self.handshaked[topic_name] = False
+                server_topic = 'krpc_{}_server'.format(topic_name)
+                self.producer.produce(server_topic, b'handshake', b'handshake',
+                                      headers={
+                                          'checksum': None
+                                      })
+                self.producer.poll(0.0)
+                logger.info('sending handshake to {}'.format(server_topic))
+                for i in range(15):
+                    if self.handshaked[topic_name]:
+                        logger.info('handshake of {} succeeded.'.format(topic_name))
+                        break
+                    time.sleep(2)
+                else:
+                    logger.error('failed to handshake with {}'.format(server_topic))
 
     @staticmethod
     def delivery_report(err, msg):
