@@ -4,14 +4,22 @@
 import logging
 import time
 from multiprocessing import Process
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
+USE_GEVENT = True
+
+if USE_GEVENT:
+    import gevent
+    as_completed = gevent.wait
+    from gevent.threadpool import ThreadPoolExecutor as ThreadPoolExecutor
+else:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
 pool = ThreadPoolExecutor(32)
 
 from kafka_rpc import KRPCClient
 from kafka_rpc import KRPCServer
 
-NUMS = 5000
+NUMS = 1000
 
 
 # 213.8162382121568, no concurrent
@@ -66,6 +74,10 @@ def call_async():
     for future in as_completed(futures):
         result = future.result()
         print(result)
+
+    # use map instead of submit if you want to
+    # for result in pool.map(krc.add, (1 for _ in range(NUMS)), (1 for _ in range(NUMS))):
+    #     print(result)
 
     t2 = time.time()
     print('Async Kafka Client QPS:', NUMS / (t2 - t1))

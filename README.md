@@ -44,7 +44,7 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
     Benchmark enviroment:
 
-    Ubuntu 19.10 x64 ()
+    Ubuntu 19.10 x64 (5.3.0-21-generic)
 
     Intel i5-8400
 
@@ -69,11 +69,12 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
 
    Also, kafka-rpc supports dynamic scalability, servers can be always added to the cluster or be removed, so jobs will be fairly distribute to all the servers, and will be reroute to another healthy server if assigned server is down.
 
-   Despite the minor disadvantages, they are all good tool developed by great programmers, you're always welcome to contribute to their original repositories and my forked [zerorpc](https://github.com/zylo117/zerorpc-python) and [mprpc](https://github.com/zylo117/mprpc), which supports numpy array.
+   Despite the minor disadvantages, they are all good tool developed by great programmers, you're always welcome to contribute to their original repositories and my forked [zerorpc](https://github.com/zylo117/zerorpc-python) and [mprpc](https://github.com/zylo117/mprpc), which support numpy array.
 
 #### Next Step
 
 - [X] optimize the QPS by allow asynchronous calls considering its large throughput advantage
+- [X] use gevent instead of built-in threading to speed up and now it's 40% faster.
 - [ ] rewrite it in cython
   
 ## Usage

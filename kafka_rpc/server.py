@@ -8,16 +8,16 @@ Update Log:
 1.0.3: add server side concurrency
 1.0.4: allow increasing message_max_bytes
 1.0.6: stop using a global packer or unpacker, to ensure thread safety.
+1.0.8: use gevent instead of built-in threading to speed up about 40%
 """
 
 import datetime
 import logging
-import sys
 import time
 import traceback
 import zlib
 from concurrent.futures.thread import ThreadPoolExecutor
-from hashlib import sha3_224
+
 import socket
 import pickle
 
@@ -67,6 +67,9 @@ class KRPCServer:
                         so handle works in multiple threads.
                         Be aware that when benefiting from concurrency, KRPCClient should run in async mode as well.
                         If concurrency fails, the handle itself might not support multithreading.
+
+            use_gevent: default True, if True, use gevent instead of asyncio. If gevent version is lower than 1.5, krpc will not run on windows.
+
         """
         bootstrap_servers = ','.join(addresses)
         kc = KafkaControl(bootstrap_servers)
@@ -169,7 +172,12 @@ class KRPCServer:
         # concurrency
         if isinstance(concurrent, int) and concurrent is not False:
             assert concurrent > 1, 'if enable concurrency, concurrent must be a integer greater than 1'
-            self.thread_pool = ThreadPoolExecutor(concurrent)
+            use_gevent = kwargs.get('use_gevent', True)
+            if use_gevent:
+                from gevent.threadpool import ThreadPoolExecutor as gThreadPoolExecutor
+                self.thread_pool = gThreadPoolExecutor(concurrent)
+            else:
+                self.thread_pool = ThreadPoolExecutor(concurrent)
         else:
             self.thread_pool = None
 

@@ -26,6 +26,6 @@ class Sum:
 # Part2: instantiate a class to an object
 s = Sum()
 
-# assuming you kafka broker is on 0.0.0.0:9092
-krs = KRPCServer('0.0.0.0:9092', handle=s, topic_name='sum', concurrent=128)
+# assuming you kafka broker is on localhost:9092
+krs = KRPCServer('localhost:9092', handle=s, topic_name='sum', concurrent=128)
 krs.server_forever()

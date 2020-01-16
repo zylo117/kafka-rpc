@@ -8,12 +8,11 @@ Update Log:
 1.0.4: allow increasing message_max_bytes
 1.0.5: support subscribing to multiple topics
 1.0.6: stop using a global packer or unpacker, to ensure thread safety.
+1.0.8: use gevent instead of built-in threading to speed up about 40%
 """
 
-import datetime
 import logging
 import pickle
-import sys
 import time
 import uuid
 import zlib
@@ -23,7 +22,6 @@ from typing import Callable, Union
 logger = logging.getLogger(__name__)
 
 from confluent_kafka import Producer, Consumer, KafkaError
-from aplex import ThreadAsyncPoolExecutor
 import msgpack
 import msgpack_numpy
 
@@ -57,6 +55,8 @@ class KRPCClient:
             use_redis: default False, if True, use redis as cache, built-in QueueDict otherwise.
 
             ack: default False, if True, server will confirm the message status. Disable ack will double the speed, but not exactly safe.
+
+            use_gevent: default True, if True, use gevent instead of asyncio. If gevent version is lower than 1.5, krpc will not run on windows.
 
         """
 
@@ -142,7 +142,13 @@ class KRPCClient:
 
         self.is_closed = False
         # coroutine pool
-        self.pool = ThreadAsyncPoolExecutor(pool_size=1)
+        use_gevent = kwargs.get('use_gevent', True)
+        if use_gevent:
+            from gevent.threadpool import ThreadPoolExecutor as gThreadPoolExecutor
+            self.pool = gThreadPoolExecutor(1)
+        else:
+            from aplex import ThreadAsyncPoolExecutor
+            self.pool = ThreadAsyncPoolExecutor(pool_size=1)
         self.pool.submit(self.wait_forever)
 
         # handshake, if's ok not to handshake, but the first rpc would be slow.
