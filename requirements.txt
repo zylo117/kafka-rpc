@@ -4,3 +4,4 @@ msgpack
 msgpack-numpy
 pycryptodome
 redis
+gevent
