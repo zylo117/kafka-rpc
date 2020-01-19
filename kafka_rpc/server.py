@@ -9,6 +9,7 @@ Update Log:
 1.0.4: allow increasing message_max_bytes
 1.0.6: stop using a global packer or unpacker, to ensure thread safety.
 1.0.8: use gevent instead of built-in threading to speed up about 40%
+1.0.9: support message compression
 """
 
 import datetime
@@ -23,6 +24,8 @@ import pickle
 
 from typing import Callable
 
+import zstd
+
 logger = logging.getLogger(__name__)
 
 from confluent_kafka import Producer, Consumer, KafkaError
@@ -36,7 +39,7 @@ from kafka_rpc.topic_manage import KafkaControl
 
 
 class KRPCServer:
-    def   __init__(self, *addresses, handle, topic_name: str, server_name: str = None,
+    def __init__(self, *addresses, handle, topic_name: str, server_name: str = None,
                  num_partitions: int = 64, replication_factor: int = 1,
                  max_polling_timeout: float = 0.001,
                  concurrent=False, **kwargs):
@@ -56,20 +59,17 @@ class KRPCServer:
             num_partitions: kafka topic num_partitions
             replication_factor: kafka topic replication_factor. Backup counts on other brokers. The larger replication_factor is, the slower but safer.
             max_polling_timeout: maximum time(seconds) to block waiting for message, event or callback.
-
             encrypt: default None, if not None, will encrypt the message with the given password. It will slow down performance.
             verify: default False, if True, will verify the message with the given sha3 checksum from the headers.
-
             ack: default False, if True, server will confirm the message status. Disable ack will double the speed, but not exactly safe.
-
             concurrent: default False, if False, the handle work in a local threads.
                         If concurrent is a integer K, KRPCServer will generate a pool of K threads,
                         so handle works in multiple threads.
                         Be aware that when benefiting from concurrency, KRPCClient should run in async mode as well.
                         If concurrency fails, the handle itself might not support multithreading.
-
             use_gevent: default True, if True, use gevent instead of asyncio. If gevent version is lower than 1.5, krpc will not run on windows.
-
+            compression: default 'none', check https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md compression.codec. 'zstd' is bugged. Check https://github.com/confluentinc/confluent-kafka-python/issues/589
+            use_compression: default False, custom compression using zstd.
         """
         bootstrap_servers = ','.join(addresses)
         kc = KafkaControl(bootstrap_servers)
@@ -104,7 +104,8 @@ class KRPCServer:
             'bootstrap.servers': bootstrap_servers,
             'group.id': 'krpc',
             'auto.offset.reset': 'earliest',
-            'auto.commit.interval.ms': 1000
+            'auto.commit.interval.ms': 1000,
+            'compression.codec': kwargs.get('compression', 'none')
         })
 
         # message_max_bytes = kwargs.get('message_max_bytes', 1048576),
@@ -135,7 +136,8 @@ class KRPCServer:
             # custom parameters
             'message.max.bytes': message_max_bytes,
             'queue.buffering.max.kbytes': queue_buffering_max_kbytes,
-            'queue.buffering.max.messages': queue_buffering_max_messages
+            'queue.buffering.max.messages': queue_buffering_max_messages,
+            'compression.codec': kwargs.get('compression', 'none')
         })
 
         self.consumer.subscribe([self.server_topic])
@@ -163,6 +165,8 @@ class KRPCServer:
         self.encrypt = kwargs.get('encrypt', None)
         if self.encrypt is not None:
             self.encrypt = AESEncryption(self.encrypt, encrypt_length=16)
+
+        self.use_compression = kwargs.get('use_compression', False)
 
         self.is_closed = False
 
@@ -230,7 +234,7 @@ class KRPCServer:
                 if self.thread_pool is None:
                     self._local_call(msg, task_id)
                 else:
-                    self.thread_pool.submit(self._local_call, msg, task_id,)
+                    self.thread_pool.submit(self._local_call, msg, task_id, )
 
             except (KeyboardInterrupt, SystemExit):
                 self.is_closed = True
@@ -257,6 +261,10 @@ class KRPCServer:
 
         if self.encrypt:
             value = self.encrypt.decrypt(value)
+
+        if self.use_compression:
+            value = zstd.decompress(value)
+
         req = self.parse_request(value)
 
         if req is None:
@@ -293,6 +301,9 @@ class KRPCServer:
 
         # send return back to client
         res = msgpack.packb(res, use_bin_type=True)
+
+        if self.use_compression:
+            res = zstd.compress(res)
 
         if self.encrypt:
             res = self.encrypt.encrypt(res)

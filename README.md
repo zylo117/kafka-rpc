@@ -198,6 +198,11 @@ So if you want a RPC service with kafka features, kRPC is the kind of tool you'r
         krs = KRPCServer('0.0.0.0:9092', handle=s, topic_name='sum', verify=True, encrypt='whatever_password+you want', verification=lambda x: sha3_224(x).hexdigest().encode())
         krc = KRPCClient('0.0.0.0:9092', topic_name='sum', verify=True, encrypt='whatever_password+you/want', verification=lambda x: sha3_224(x).hexdigest().encode())
 
+4. use zstd to compress & decompress data
+    
+        krs = KRPCServer('0.0.0.0:9092', handle=s, topic_name='sum', use_compression=True)
+        krc = KRPCClient('0.0.0.0:9092', 9092, topic_name='sum', use_compression=True)
+        
 ### Warning
 
 If use_redis=False, KRPCClient cannot be instantiated more than once

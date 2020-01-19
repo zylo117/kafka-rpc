@@ -9,6 +9,7 @@ Update Log:
 1.0.5: support subscribing to multiple topics
 1.0.6: stop using a global packer or unpacker, to ensure thread safety.
 1.0.8: use gevent instead of built-in threading to speed up about 40%
+1.0.9: support message compression
 """
 
 import logging
@@ -18,6 +19,8 @@ import uuid
 import zlib
 from collections import deque
 from typing import Callable, Union
+
+import zstd
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +51,13 @@ class KRPCClient:
                         the existing topic will be used,
                         create a new topic otherwise.
             max_polling_timeout: maximum time(seconds) to block waiting for message, event or callback.
-
             encrypt: default None, if not None, will encrypt the message with the given password. It will slow down performance.
             verify: default False, if True, will verify the message with the given sha3 checksum from the headers.
-
             use_redis: default False, if True, use redis as cache, built-in QueueDict otherwise.
-
             ack: default False, if True, server will confirm the message status. Disable ack will double the speed, but not exactly safe.
-
             use_gevent: default True, if True, use gevent instead of asyncio. If gevent version is lower than 1.5, krpc will not run on windows.
-
+            compression: default 'none', check https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md compression.codec. 'zstd' is bugged. Check https://github.com/confluentinc/confluent-kafka-python/issues/589
+            use_compression: default False, custom compression using zstd.
         """
 
         bootstrap_servers = ','.join(addresses)
@@ -75,7 +75,8 @@ class KRPCClient:
             'bootstrap.servers': bootstrap_servers,
             'group.id': 'krpc',
             'auto.offset.reset': 'earliest',
-            'auto.commit.interval.ms': 1000
+            'auto.commit.interval.ms': 1000,
+            'compression.codec': kwargs.get('compression_codec', 'none')
         })
 
         # message_max_bytes = kwargs.get('message_max_bytes', 1048576),
@@ -106,7 +107,8 @@ class KRPCClient:
             # custom parameters
             'message.max.bytes': message_max_bytes,
             'queue.buffering.max.kbytes': queue_buffering_max_kbytes,
-            'queue.buffering.max.messages': queue_buffering_max_messages
+            'queue.buffering.max.messages': queue_buffering_max_messages,
+            'compression.codec': kwargs.get('compression_codec', 'none')
         })
 
         # add redis cache, for temporarily storage of returned data
@@ -139,6 +141,8 @@ class KRPCClient:
         self.encrypt = kwargs.get('encrypt', None)
         if self.encrypt is not None:
             self.encrypt = AESEncryption(self.encrypt, encrypt_length=16)
+
+        self.use_compression = kwargs.get('use_compression', False)
 
         self.is_closed = False
         # coroutine pool
@@ -226,6 +230,9 @@ class KRPCClient:
         }
 
         req = msgpack.packb(req, use_bin_type=True)
+
+        if self.use_compression:
+            req = zstd.compress(req)
 
         if self.encrypt:
             req = self.encrypt.encrypt(req)
@@ -367,6 +374,9 @@ class KRPCClient:
 
         if self.encrypt:
             res = self.encrypt.decrypt(res)
+
+        if self.use_compression:
+            res = zstd.decompress(res)
 
         res = self.parse_response(res)
 
