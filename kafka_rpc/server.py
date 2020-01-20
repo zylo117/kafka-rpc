@@ -251,6 +251,8 @@ class KRPCServer:
 
         # get info from header, etc
         request_time = timestamp[1] / 1000
+        received_time = time.time()
+
         checksum = headers[0][1]
 
         if self.verify:
@@ -293,6 +295,7 @@ class KRPCServer:
         res = {
             'ret': ret,
             'tact_time': tact_time,
+            'flight_time_request': received_time - request_time,
             'server_id': self.server_name,
             'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'),
             'exception': exception,
@@ -303,7 +306,7 @@ class KRPCServer:
         res = msgpack.packb(res, use_bin_type=True)
 
         if self.use_compression:
-            res = zstd.compress(res)
+            res = zstd.compress_mt(res)
 
         if self.encrypt:
             res = self.encrypt.encrypt(res)

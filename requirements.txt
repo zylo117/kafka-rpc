@@ -5,4 +5,4 @@ msgpack-numpy
 pycryptodome
 redis
 gevent
-zstd
+zstd>=1.4.4.1

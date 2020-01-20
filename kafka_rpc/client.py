@@ -232,7 +232,7 @@ class KRPCClient:
         req = msgpack.packb(req, use_bin_type=True)
 
         if self.use_compression:
-            req = zstd.compress(req)
+            req = zstd.compress_mt(req)
 
         if self.encrypt:
             req = self.encrypt.encrypt(req)
@@ -250,7 +250,7 @@ class KRPCClient:
                               })
 
         # waiting for response from server sync/async
-        res = self.poll_result_from_cache(task_id, timeout)
+        res, flight_time_response = self.poll_result_from_cache(task_id, timeout)
 
         if self.ack:
             self.producer.poll(0.0)
@@ -258,6 +258,7 @@ class KRPCClient:
         # do something to the response
         ret = res['ret']
         tact_time_server = res['tact_time']
+        flight_time_request = res['flight_time_request']
         server_id = res['server_id']
         exception = res['exception']
         tb = res['traceback']
@@ -274,7 +275,9 @@ class KRPCClient:
             'ret': ret,
             'tact_time': end_time - start_time,
             'tact_time_server': tact_time_server,
-            'server_id': server_id
+            'server_id': server_id,
+            'flight_time_request': flight_time_request,
+            'flight_time_response': flight_time_response
         }
 
     def wait_forever(self):
@@ -306,6 +309,7 @@ class KRPCClient:
 
                 res = msg.value()
                 headers = msg.headers()
+                timestamp = msg.timestamp()
                 checksum = headers[0][1]
 
                 if self.verify:
@@ -319,7 +323,7 @@ class KRPCClient:
                     self.cache.set(task_id, res)
                     self.cache.expire(task_id, self.expire_time)
                 else:
-                    self.cache[task_id] = res
+                    self.cache[task_id] = res, time.time() - timestamp[1] / 1000
 
                 # send signal for polling to search for result
                 ...
@@ -340,6 +344,7 @@ class KRPCClient:
         loop_times = int(timeout / self.max_polling_timeout)
         task_id = task_id.encode()
         if self.use_redis:
+            flight_time_response = -1
             self.cache_channel.subscribe(task_id)
 
             for _ in range(loop_times):
@@ -366,6 +371,8 @@ class KRPCClient:
             for _ in range(loop_times):
                 try:
                     res = self.cache[task_id]
+                    flight_time_response = res[1]
+                    res = res[0]
                     break
                 except:
                     time.sleep(self.max_polling_timeout)
@@ -380,7 +387,7 @@ class KRPCClient:
 
         res = self.parse_response(res)
 
-        return res
+        return res, flight_time_response
 
     def __getattr__(self, method_name):
         return lambda *args, **kwargs: self.call(method_name, *args, **kwargs)

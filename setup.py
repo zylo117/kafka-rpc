@@ -9,6 +9,7 @@ requirements = [
     'msgpack-numpy==0.4.4.3',
     'pycryptodome==3.9.0',
     'redis>=3.3.8',
+    'zstd>=1.4.4.1'
 ]
 
 with open("README.md", "r") as fh:
