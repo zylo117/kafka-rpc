@@ -94,7 +94,7 @@ class KRPCServer:
         if server_name is None:
             self.server_name = get_ip()
         else:
-            self.server_name = server_name
+            self.server_name = server_name + '_' + get_ip()
 
         # set max_polling_timeout
         assert max_polling_timeout > 0, 'max_polling_timeout must be greater than 0'
