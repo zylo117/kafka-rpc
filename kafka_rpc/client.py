@@ -232,7 +232,7 @@ class KRPCClient:
         req = msgpack.packb(req, use_bin_type=True)
 
         if self.use_compression:
-            req = zstd.compress_mt(req)
+            req = zstd.compress(req)
 
         if self.encrypt:
             req = self.encrypt.encrypt(req)

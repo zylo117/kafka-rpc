@@ -306,7 +306,7 @@ class KRPCServer:
         res = msgpack.packb(res, use_bin_type=True)
 
         if self.use_compression:
-            res = zstd.compress_mt(res)
+            res = zstd.compress(res)
 
         if self.encrypt:
             res = self.encrypt.encrypt(res)
