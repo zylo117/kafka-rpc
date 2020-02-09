@@ -290,7 +290,7 @@ class KRPCServer:
 
         self.is_available = True
 
-        tact_time = time.time() - request_time
+        tact_time = time.time() - received_time
 
         res = {
             'ret': ret,
