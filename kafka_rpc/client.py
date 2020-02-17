@@ -10,6 +10,7 @@ Update Log:
 1.0.6: stop using a global packer or unpacker, to ensure thread safety.
 1.0.8: use gevent instead of built-in threading to speed up about 40%
 1.0.9: support message compression
+1.0.10: add argument max_queue_len to control the length of QueueDict
 """
 
 import logging
@@ -58,6 +59,7 @@ class KRPCClient:
             use_gevent: default True, if True, use gevent instead of asyncio. If gevent version is lower than 1.5, krpc will not run on windows.
             compression: default 'none', check https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md compression.codec. 'zstd' is bugged. Check https://github.com/confluentinc/confluent-kafka-python/issues/589
             use_compression: default False, custom compression using zstd.
+            max_queue_len: int, default 1024, if use_redis is False, a QueueDict will cache results with the length of max_queue_len. This should be as low as it can be, otherwise OOM.
         """
 
         bootstrap_servers = ','.join(addresses)
@@ -123,7 +125,7 @@ class KRPCClient:
             self.cache = redis.Redis(redis_host, redis_port, redis_db, redis_password)
             self.cache_channel = self.cache.pubsub()
         else:
-            self.cache = QueueDict(maxlen=2048, expire=self.expire_time)
+            self.cache = QueueDict(maxlen=kwargs.get(max_queue_len, 1024), expire=self.expire_time)
 
         # set msgpack packer & unpacker, stop using a global packer or unpacker, to ensure thread safety.
         # self.packer = msgpack.Packer(use_bin_type=True)
