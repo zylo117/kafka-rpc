@@ -125,7 +125,7 @@ class KRPCClient:
             self.cache = redis.Redis(redis_host, redis_port, redis_db, redis_password)
             self.cache_channel = self.cache.pubsub()
         else:
-            self.cache = QueueDict(maxlen=kwargs.get(max_queue_len, 1024), expire=self.expire_time)
+            self.cache = QueueDict(maxlen=kwargs.get('max_queue_len', 1024), expire=self.expire_time)
 
         # set msgpack packer & unpacker, stop using a global packer or unpacker, to ensure thread safety.
         # self.packer = msgpack.Packer(use_bin_type=True)
