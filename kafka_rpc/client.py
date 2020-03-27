@@ -11,6 +11,7 @@ Update Log:
 1.0.8: use gevent instead of built-in threading to speed up about 40%
 1.0.9: support message compression
 1.0.10: add argument max_queue_len to control the length of QueueDict
+1.0.11: change redis backend behavior
 """
 
 import logging
@@ -321,8 +322,8 @@ class KRPCClient:
                         continue
 
                 if self.use_redis:
-                    self.cache.publish(task_id, res)
-                    self.cache.set(task_id, res)
+                    self.cache.hset(task_id, b'result', res)
+                    self.cache.hset(task_id, b'flight_time_response', time.time() - timestamp[1] / 1000)
                     self.cache.expire(task_id, self.expire_time)
                 else:
                     self.cache[task_id] = res, time.time() - timestamp[1] / 1000
@@ -346,26 +347,16 @@ class KRPCClient:
         loop_times = int(timeout / self.max_polling_timeout)
         task_id = task_id.encode()
         if self.use_redis:
-            flight_time_response = -1
-            self.cache_channel.subscribe(task_id)
-
             for _ in range(loop_times):
-                # if no completion, get message from subscribed channel
-                message = self.cache_channel.get_message(timeout=self.max_polling_timeout)
-                # else get response from redis db cache
-                if message is None:
-                    res = self.cache.get(task_id)
+                res_exists = self.cache.hexists(task_id, 'result')
 
-                    # if still no response yet, continue polling
-                    if res is None:
-                        continue
-                    break
+                # if still no response yet, continue polling
+                if not res_exists:
+                    continue
 
-                if isinstance(message, dict):
-                    if isinstance(message['data'], int):
-                        continue
+                res = self.cache.hget(task_id, b'result')
+                flight_time_response = self.cache.hget(task_id, b'flight_time_response')
 
-                res = message['data']
                 break
             else:
                 raise TimeoutError
