@@ -7,7 +7,7 @@ requirements = [
     'aplex==1.0.1',
     'msgpack==0.6.2',
     'msgpack-numpy==0.4.4.3',
-    'pycryptodome==3.9.0',
+    'pycryptodome==3.19.1',
     'redis>=3.3.8',
     'zstd>=1.4.4.1'
 ]
