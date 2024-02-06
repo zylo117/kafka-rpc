@@ -170,12 +170,6 @@ class KRPCClient:
         if not topic_names:
             return
 
-        for topic_name in topic_names:
-            client_topic = 'krpc_{}_client'.format(topic_name)
-
-            self.topic_names.append(topic_name)
-            self.client_topics.append(client_topic)
-
         self.consumer.subscribe(self.client_topics)
         logger.info('adding consumer subscription of: {}'.format(topic_names))
 

@@ -3,11 +3,11 @@ from glob import glob
 from setuptools import setup
 
 requirements = [
-    'confluent-kafka==1.3.0',
+    'confluent-kafka==2.3.0',
     'aplex==1.0.1',
     'msgpack==0.6.2',
     'msgpack-numpy==0.4.4.3',
-    'pycryptodome==3.9.0',
+    'pycryptodome==3.20.0',
     'redis>=3.3.8',
     'zstd>=1.4.4.1'
 ]
@@ -17,7 +17,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='kafka-rpc',
-    version='1.0.11',
+    version='1.0.12',
     description='RPC protocol based on kafka',
     long_description=long_description,
     long_description_content_type='text/markdown',
